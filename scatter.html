@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>FCC Scatterplot Graph</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.4/d3.min.js"></script>
+    <script src="https://cdn.freecodecamp.org/testable-projects-fcc/v1/bundle.js"></script>
+    <style>
+      body { font-family: Arial, sans-serif; background: #fafafa; }
+      #title {
+        font-size: 2em;
+        font-weight: bold;
+        text-align: center;
+        margin: 36px 0 0 0;
+      }
+      #legend {
+        font-size: 1.1em;
+        background: #eee;
+        display: inline-block;
+        margin: 20px 0;
+        padding: 10px 30px;
+        border-radius: 5px;
+      }
+      .dot { opacity: 0.8; stroke: #222; stroke-width: 1px; }
+      .dot.doping { fill: #ff9933; }
+      .dot.no-doping { fill: #3c90e8; }
+      .dot:hover { opacity: 1; stroke: #111; stroke-width: 2px; }
+      #tooltip {
+        position: absolute;
+        background: #fffbe9;
+        color: #222;
+        border: 1px solid #999;
+        padding: 10px 20px;
+        pointer-events: none;
+        border-radius: 7px;
+        display: none;
+        z-index: 10;
+        font-size: 1em;
+      }
+      svg { margin-top: 16px; }
+    </style>
+  </head>
+  <body>
+    <h1 id="title">Doping in Professional Bicycle Racing</h1>
+    <svg id="scatter" width="900" height="600"></svg>
+    <div id="legend">
+      <span style="color:#3c90e8;font-weight:bold;">Blue: No Doping Allegations</span><br>
+      <span style="color:#ff9933;font-weight:bold;">Orange: Doping Allegations</span>
+    </div>
+    <div id="tooltip"></div>
+    <script>
+      const url = "https://raw.githubusercontent.com/freeCodeCamp/ProjectReferenceData/master/cyclist-data.json";
+      const w = 900, h = 600, padding = 60;
+
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          // Prepare the data
+          data.forEach(d => {
+            d.Year = +d.Year;
+            d.Time = d3.timeParse("%M:%S")(d.Time);
+          });
+
+          // X & Y domains
+          const xDomain = d3.extent(data, d => d.Year);
+          const yDomain = d3.extent(data, d => d.Time);
+
+          // Scales
+          const xScale = d3.scaleLinear()
+            .domain([xDomain[0] - 1, xDomain[1] + 1])
+            .range([padding, w - padding]);
+          const yScale = d3.scaleTime()
+            .domain([yDomain[0], yDomain[1]])
+            .range([padding, h - padding]);
+
+          const svg = d3.select("#scatter");
+
+          // Axes
+          const xAxis = d3.axisBottom(xScale)
+            .tickFormat(d3.format("d"));
+          const yAxis = d3.axisLeft(yScale)
+            .tickFormat(d3.timeFormat("%M:%S"));
+
+          svg.append("g")
+            .attr("id", "x-axis")
+            .attr("transform", "translate(0," + (h - padding) + ")")
+            .call(xAxis);
+
+          svg.append("g")
+            .attr("id", "y-axis")
+            .attr("transform", "translate(" + padding + ",0)")
+            .call(yAxis);
+
+          // Dots
+          svg.selectAll(".dot")
+            .data(data)
+            .enter()
+            .append("circle")
+            .attr("class", d => "dot" + (d.Doping ? " doping" : " no-doping"))
+            .attr("cx", d => xScale(d.Year))
+            .attr("cy", d => yScale(d.Time))
+            .attr("r", 7)
+            .attr("data-xvalue", d => d.Year)
+            .attr("data-yvalue", d => d.Time.toISOString())
+            .on("mouseover", function(event, d) {
+              const tooltip = d3.select("#tooltip");
+              tooltip.style("display", "block")
+                .style("left", (event.pageX + 14) + "px")
+                .style("top", (event.pageY - 60) + "px")
+                .attr("data-year", d.Year)
+                .html(`<strong>${d.Name} (${d.Nationality})</strong><br>
+                  <b>Year:</b> ${d.Year}<br>
+                  <b>Time:</b> ${d3.timeFormat("%M:%S")(d.Time)}<br>
+                  <b>Place:</b> ${d.Place}<br>
+                  <b>Doping:</b> ${d.Doping ? d.Doping : "None"}
+                `);
+              d3.select(this).attr("stroke", "#000").attr("opacity",1);
+            })
+            .on("mouseout", function() {
+              d3.select("#tooltip").style("display", "none");
+              d3.select(this).attr("stroke", "#222").attr("opacity",0.8);
+            });
+
+        });
+    </script>
+  </body>
+</html>
