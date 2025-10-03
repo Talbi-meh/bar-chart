@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8"/>
+    <title>FCC Treemap Diagram</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.4/d3.min.js"></script>
+    <script src="https://cdn.freecodecamp.org/testable-projects-fcc/v1/bundle.js"></script>
+    <style>
+      body { font-family: Arial, sans-serif; background: #fcfcfc;}
+      #title { font-size:2em;font-weight:bold;text-align:center;margin-top:36px;}
+      #description { font-size:1.2em;text-align:center;margin:14px 0 20px 0;}
+      .tile { stroke: #fff; stroke-width:1px; }
+      #legend { margin:32px auto 0 auto; display:block;}
+      .legend-item { stroke:#333; }
+      #tooltip {
+        position: absolute;
+        background: #fffbe9;
+        color: #222;
+        border: 1px solid #999;
+        padding: 10px 20px;
+        pointer-events: none;
+        border-radius: 7px;
+        font-size: 1em;
+        display: none;
+        z-index: 10;
+        max-width: 280px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 id="title">Movie Sales Treemap</h1>
+    <div id="description">Each tile size represents the total revenue for a movie, grouped by genre.</div>
+    <svg id="treemap" width="960" height="570"></svg>
+    <svg id="legend" width="420" height="52"></svg>
+    <div id="tooltip"></div>
+    <script>
+      const url = "https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/movie-data.json";
+      const w = 960, h = 570;
+
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          const categories = Array.from(new Set(data.children.map(c => c.name)));
+          // Generate a color per category (2+ required)
+          const colors = d3.schemeCategory10.concat(d3.schemePastel1, d3.schemeSet3);
+          const colorScale = d3.scaleOrdinal().domain(categories).range(colors);
+
+          // D3 Treemap layout
+          const root = d3.hierarchy(data)
+             .sum(d => d.value)
+             .sort((a, b) => b.value - a.value);
+
+          d3.treemap()
+            .size([w, h-60])
+            .paddingInner(2)
+            (root);
+
+          // SVG
+          const svg = d3.select("#treemap");
+
+          // Tooltip
+          const tooltip = d3.select("#tooltip");
+
+          // Tiles
+          svg.selectAll("g")
+            .data(root.leaves())
+            .enter()
+            .append("g")
+            .attr("transform", d => `translate(${d.x0},${d.y0})`)
+            .append("rect")
+            .attr("class", "tile")
+            .attr("width", d => d.x1 - d.x0)
+            .attr("height", d => d.y1 - d.y0)
+            .attr("data-name", d => d.data.name)
+            .attr("data-category", d => d.data.category)
+            .attr("data-value", d => d.data.value)
+            .attr("fill", d => colorScale(d.data.category))
+            .on("mouseover", function(event, d) {
+              tooltip.style("display", "block")
+                .style("left", (event.pageX+14) + "px")
+                .style("top", (event.pageY-60) + "px")
+                .attr("data-value", d.data.value)
+                .html(
+                  `<strong>${d.data.name}</strong><br>
+                   <b>Category:</b> ${d.data.category}<br>
+                   <b>Value:</b> $${d.data.value.toLocaleString()}`
+                );
+            })
+            .on("mouseout", ()=>tooltip.style("display","none"));
+
+          // Text labels (movie names)
+          svg.selectAll("g")
+            .append("text")
+            .attr("x", 4)
+            .attr("y", 18)
+            .attr("font-size", "11px")
+            .attr("fill", "#333")
+            .text(d => d.data.name.length > 17 ? d.data.name.slice(0,15) + "..." : d.data.name);
+
+          // Legend
+          const legendSvg = d3.select("#legend");
+          const legendRectW = 32, legendRectH = 22, legendGap = 12;
+          legendSvg.selectAll(".legend-item")
+            .data(categories)
+            .enter()
+            .append("rect")
+            .attr("class", "legend-item")
+            .attr("x", (d, i) => i * (legendRectW + legendGap))
+            .attr("y", 10)
+            .attr("width", legendRectW)
+            .attr("height", legendRectH)
+            .attr("fill", d => colorScale(d));
+
+          legendSvg.selectAll("text")
+            .data(categories)
+            .enter()
+            .append("text")
+            .attr("x", (d,i)=>i*(legendRectW+legendGap)+5)
+            .attr("y", 44)
+            .attr("font-size", "11px")
+            .text(d=>d);
+
+        });
+    </script>
+  </body>
+</html>
