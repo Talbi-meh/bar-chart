@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>FCC Bar Chart</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.4/d3.min.js"></script>
+    <!-- Bundle for FreeCodeCamp tests -->
+    <script src="https://cdn.freecodecamp.org/testable-projects-fcc/v1/bundle.js"></script>
+    <style>
+      body { font-family: Arial, sans-serif; text-align: center; background: #fafafa;}
+      #title { margin-top: 30px; font-size: 2em; font-weight: bold;}
+      .bar { fill: #4791d0; }
+      .bar:hover { fill: orange; }
+      #tooltip {
+        position: absolute;
+        background: #ff9900cc;
+        color: #111;
+        padding: 8px 12px;
+        border-radius: 5px;
+        pointer-events: none;
+        display: none;
+      }
+      svg { margin-top: 15px;}
+    </style>
+  </head>
+  <body>
+    <div id="container">
+      <h1 id="title">United States GDP</h1>
+      <svg id="chart"></svg>
+      <div id="tooltip"></div>
+    </div>
+    <script>
+      const url =
+        "https://raw.githubusercontent.com/freeCodeCamp/ProjectReferenceData/master/GDP-data.json";
+      const w = 900, h = 500, padding = 60;
+
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          const dataset = data.data;
+          const dates = dataset.map(d => new Date(d[0]));
+          const gdps = dataset.map(d => d[1]);
+
+          // Scales
+          const xScale = d3.scaleTime()
+            .domain([d3.min(dates), d3.max(dates)])
+            .range([padding, w - padding]);
+          const yScale = d3.scaleLinear()
+            .domain([0, d3.max(gdps)])
+            .range([h - padding, padding]);
+
+          // SVG
+          const svg = d3.select("#chart")
+            .attr("width", w)
+            .attr("height", h);
+
+          // Axes
+          const xAxis = d3.axisBottom(xScale);
+          const yAxis = d3.axisLeft(yScale);
+
+          svg.append("g")
+            .attr("id", "x-axis")
+            .attr("transform", "translate(0," + (h - padding) + ")")
+            .call(xAxis);
+
+          svg.append("g")
+            .attr("id", "y-axis")
+            .attr("transform", "translate(" + padding + ",0)")
+            .call(yAxis);
+
+          // Tooltip
+          const tooltip = d3.select("#tooltip");
+
+          // Bars
+          const barWidth = (w - 2 * padding) / dataset.length;
+
+          svg.selectAll(".bar")
+            .data(dataset)
+            .enter()
+            .append("rect")
+            .attr("class", "bar")
+            .attr("x", (d, i) => xScale(new Date(d[0])))
+            .attr("y", d => yScale(d[1]))
+            .attr("width", barWidth)
+            .attr("height", d => h - padding - yScale(d[1]))
+            .attr("data-date", d => d[0])
+            .attr("data-gdp", d => d[1])
+            .on("mouseover", function(event, d) {
+              tooltip
+                .style("display", "block")
+                .style("left", (event.pageX + 10) + "px")
+                .style("top", (event.pageY - 40) + "px")
+                .attr("data-date", d[0])
+                .html(
+                  `<strong>Date:</strong> ${d[0]}<br><strong>GDP:</strong> $${d[1].toLocaleString()} Billion`
+                );
+              d3.select(this).attr("fill", "orange");
+            })
+            .on("mouseout", function() {
+              tooltip.style("display", "none");
+              d3.select(this).attr("fill", null);
+            });
+        });
+    </script>
+  </body>
+</html>
